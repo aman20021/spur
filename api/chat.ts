@@ -1,35 +1,24 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import AnthropicBedrock from '@anthropic-ai/bedrock-sdk';
 
-const BEDROCK_REGION = process.env.AWS_REGION || 'us-west-2';
-const BEDROCK_TOKEN = process.env.AWS_BEARER_TOKEN_BEDROCK || '';
-const MODEL_ID = 'us.anthropic.claude-sonnet-4-20250514-v1:0';
+const client = new AnthropicBedrock({
+  awsRegion: process.env.AWS_REGION || 'us-west-2',
+  awsSessionToken: process.env.AWS_BEARER_TOKEN_BEDROCK || '',
+  awsAccessKey: 'bedrock',
+  awsSecretKey: 'bedrock',
+});
 
 async function callClaude(system: string, messages: { role: string; content: string }[]): Promise<string> {
-  const url = `https://bedrock-runtime.${BEDROCK_REGION}.amazonaws.com/model/${encodeURIComponent(MODEL_ID)}/invoke`;
-
-  const body = {
-    anthropic_version: 'bedrock-2023-05-31',
+  const response = await client.messages.create({
+    model: 'us.anthropic.claude-sonnet-4-20250514-v1:0',
     max_tokens: 300,
     system,
-    messages,
-  };
-
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${BEDROCK_TOKEN}`,
-    },
-    body: JSON.stringify(body),
+    messages: messages as { role: 'user' | 'assistant'; content: string }[],
   });
 
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(`Bedrock ${resp.status}: ${errText.substring(0, 200)}`);
-  }
-
-  const data = await resp.json() as { content: { type: string; text: string }[] };
-  return data.content?.[0]?.text || 'I apologize, I was unable to process your request.';
+  return response.content[0].type === 'text'
+    ? response.content[0].text
+    : 'I apologize, I was unable to process your request.';
 }
 
 const FAQ_KNOWLEDGE = `STORE KNOWLEDGE BASE:

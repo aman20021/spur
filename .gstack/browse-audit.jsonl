@@ -1,0 +1,10 @@
+{"ts":"2026-06-02T06:23:54.829Z","cmd":"goto","args":"https://spur-kceu.vercel.app/","origin":"https://spur-kceu.vercel.app/","durationMs":399,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-02T06:23:54.914Z","cmd":"screenshot","args":"/tmp/spur-vercel.png","origin":"https://spur-kceu.vercel.app/","durationMs":85,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-02T06:23:54.915Z","cmd":"console","args":"--errors","origin":"https://spur-kceu.vercel.app/","durationMs":1,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-02T06:23:54.915Z","cmd":"chain","args":"[\n  [\"goto\",\"https://spur-kceu.vercel.app/\"],\n  [\"screenshot\",\"/tmp/spur-vercel.png\"],\n  [\"console\",\"--errors\"]\n]","origin":"https://spur-kceu.vercel.app/","durationMs":488,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-02T06:26:58.742Z","cmd":"snapshot","args":"-i","origin":"about:blank","durationMs":26,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-02T06:27:03.752Z","cmd":"fill","args":"textarea hello","origin":"about:blank","durationMs":5009,"status":"error","hasCookies":false,"mode":"launched","error":"fill: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('textarea')\u001b[22m\n"}
+{"ts":"2026-06-02T06:27:03.753Z","cmd":"click","args":"@e27","origin":"about:blank","durationMs":0,"status":"error","hasCookies":false,"mode":"launched","error":"Ref @e27 not found. Run 'snapshot' to get fresh refs."}
+{"ts":"2026-06-02T06:27:03.796Z","cmd":"screenshot","args":"/tmp/spur-vercel-sending.png","origin":"about:blank","durationMs":43,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-02T06:27:03.798Z","cmd":"network","args":"","origin":"about:blank","durationMs":1,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-06-02T06:27:03.798Z","cmd":"chain","args":"[\n  [\"snapshot\",\"-i\"],\n  [\"fill\",\"textarea\",\"hello\"],\n  [\"click\",\"@e27\"],\n  [\"screenshot\",\"/tmp/spur-vercel-sending.png\"],\n  [\"network\"]\n]","origin":"about:blank","durationMs":5085,"status":"ok","hasCookies":false,"mode":"launched"}
