@@ -1,10 +1,36 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import AnthropicBedrock from '@anthropic-ai/bedrock-sdk';
 
-const client = new AnthropicBedrock({
-  awsRegion: process.env.AWS_REGION || 'us-west-2',
-  apiKey: process.env.AWS_BEARER_TOKEN_BEDROCK || '',
-});
+const BEDROCK_REGION = process.env.AWS_REGION || 'us-west-2';
+const BEDROCK_TOKEN = process.env.AWS_BEARER_TOKEN_BEDROCK || '';
+const MODEL_ID = 'us.anthropic.claude-sonnet-4-20250514-v1:0';
+
+async function callClaude(system: string, messages: { role: string; content: string }[]): Promise<string> {
+  const url = `https://bedrock-runtime.${BEDROCK_REGION}.amazonaws.com/model/${encodeURIComponent(MODEL_ID)}/invoke`;
+
+  const body = {
+    anthropic_version: 'bedrock-2023-05-31',
+    max_tokens: 300,
+    system,
+    messages,
+  };
+
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${BEDROCK_TOKEN}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(`Bedrock ${resp.status}: ${errText.substring(0, 200)}`);
+  }
+
+  const data = await resp.json() as { content: { type: string; text: string }[] };
+  return data.content?.[0]?.text || 'I apologize, I was unable to process your request.';
+}
 
 const FAQ_KNOWLEDGE = `STORE KNOWLEDGE BASE:
 
@@ -56,8 +82,6 @@ interface Message {
   text: string;
 }
 
-// In-memory store for serverless (conversations reset on cold start)
-// For production, use a database (Vercel KV, Supabase, etc.)
 const conversations = new Map<string, Message[]>();
 
 function generateId(): string {
@@ -65,7 +89,6 @@ function generateId(): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -74,23 +97,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  // Robust path parsing that works with direct URLs, rewrites, and query parameters
   const urlObj = new URL(req.url || '', 'http://localhost');
   let path = urlObj.pathname;
 
-  // Strip prefixes
   if (path.startsWith('/api/chat')) {
     path = path.replace('/api/chat', '');
   } else if (path.startsWith('/chat')) {
     path = path.replace('/chat', '');
   }
 
-  // Fallback to query parameter if rewrite stripped the pathname
   if ((path === '' || path === '/') && req.query.path) {
     path = typeof req.query.path === 'string' ? req.query.path : '';
   }
 
-  // Ensure path starts with a slash
   if (!path.startsWith('/')) {
     path = '/' + path;
   }
@@ -116,26 +135,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const history = conversations.get(convId)!;
       history.push({ sender: 'user', text: message.trim() });
 
-      // Build messages for Claude
       const claudeMessages = history.map((m) => ({
-        role: (m.sender === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+        role: m.sender === 'user' ? 'user' : 'assistant',
         content: m.text,
       }));
 
-      const response = await client.messages.create({
-        model: 'us.anthropic.claude-sonnet-4-20250514-v1:0',
-        max_tokens: 300,
-        system: SYSTEM_PROMPT,
-        messages: claudeMessages,
-      });
-
-      const reply = response.content[0].type === 'text'
-        ? response.content[0].text
-        : 'I apologize, I was unable to process your request.';
-
+      const reply = await callClaude(SYSTEM_PROMPT, claudeMessages);
       history.push({ sender: 'ai', text: reply });
 
-      // Cap history at 40 messages
       if (history.length > 40) {
         conversations.set(convId, history.slice(-40));
       }
@@ -144,14 +151,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (error) {
       const err = error as Error;
       console.error('[chat] Error:', err.message);
-
-      if (err.message.includes('rate_limit') || err.message.includes('429')) {
-        return res.status(429).json({
-          reply: "I'm getting a lot of messages right now. Please wait a moment and try again!",
-          error: 'rate_limit',
-        });
-      }
-
       return res.status(500).json({
         reply: "Sorry, I ran into an issue. Please try again in a moment.",
         error: 'internal_error',
@@ -163,42 +162,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET' && path.startsWith('/history/')) {
     const sessionId = path.replace('/history/', '');
     const history = conversations.get(sessionId);
-
-    if (!history) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
+    if (!history) return res.status(404).json({ error: 'Conversation not found' });
     return res.json({
       sessionId,
       createdAt: new Date().toISOString(),
-      messages: history.map((m, i) => ({
-        id: `${sessionId}-${i}`,
-        sender: m.sender,
-        text: m.text,
-        createdAt: new Date().toISOString(),
-      })),
+      messages: history.map((m, i) => ({ id: `${sessionId}-${i}`, sender: m.sender, text: m.text, createdAt: new Date().toISOString() })),
     });
   }
 
   // GET /chat/conversations
-  if (req.method === 'GET' && (path === '/conversations' || path === '')) {
+  if (req.method === 'GET' && (path === '/conversations' || path === '/')) {
     const convList = Array.from(conversations.entries())
       .filter(([_, msgs]) => msgs.length > 0)
-      .map(([id, msgs]) => ({
-        id,
-        created_at: new Date().toISOString(),
-        preview: msgs.find((m) => m.sender === 'user')?.text || null,
-        message_count: msgs.length,
-      }))
+      .map(([id, msgs]) => ({ id, created_at: new Date().toISOString(), preview: msgs.find((m) => m.sender === 'user')?.text || null, message_count: msgs.length }))
       .slice(0, 50);
-
     return res.json({ conversations: convList });
   }
 
   // DELETE /chat/conversations/:id
   if (req.method === 'DELETE' && path.startsWith('/conversations/')) {
-    const id = path.replace('/conversations/', '');
-    conversations.delete(id);
+    conversations.delete(path.replace('/conversations/', ''));
     return res.json({ success: true });
   }
 
