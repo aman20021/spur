@@ -4,6 +4,7 @@ import type { Message } from './conversation.js';
 
 const client = new AnthropicBedrock({
   awsRegion: process.env.AWS_REGION || 'us-west-2',
+  apiKey: process.env.AWS_BEARER_TOKEN_BEDROCK || '',
 });
 
 const SYSTEM_PROMPT = `You are a friendly and helpful customer support agent for SparkStore, a popular Indian e-commerce store selling electronics, fashion, and home & living products.
