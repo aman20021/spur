@@ -10,5 +10,9 @@
   },
   "devDependencies": {
     "concurrently": "^9.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/bedrock-sdk": "^0.29.2",
+    "@vercel/node": "^5.8.9"
   }
 }
