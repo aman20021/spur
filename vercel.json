@@ -3,7 +3,7 @@
   "outputDirectory": "client/dist",
   "installCommand": "npm install && cd client && npm install",
   "rewrites": [
-    { "source": "/chat/:path*", "destination": "/api/chat" },
+    { "source": "/chat/:path*", "destination": "/api/chat?path=:path*" },
     { "source": "/health", "destination": "/api/health" }
   ]
 }

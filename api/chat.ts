@@ -73,7 +73,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  const path = req.url?.replace('/chat', '') || '';
+  // Robust path parsing that works with direct URLs, rewrites, and query parameters
+  const urlObj = new URL(req.url || '', 'http://localhost');
+  let path = urlObj.pathname;
+
+  // Strip prefixes
+  if (path.startsWith('/api/chat')) {
+    path = path.replace('/api/chat', '');
+  } else if (path.startsWith('/chat')) {
+    path = path.replace('/chat', '');
+  }
+
+  // Fallback to query parameter if rewrite stripped the pathname
+  if ((path === '' || path === '/') && req.query.path) {
+    path = typeof req.query.path === 'string' ? req.query.path : '';
+  }
+
+  // Ensure path starts with a slash
+  if (!path.startsWith('/')) {
+    path = '/' + path;
+  }
 
   // POST /chat/message
   if (req.method === 'POST' && path === '/message') {
