@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import AnthropicBedrock from '@anthropic-ai/bedrock-sdk';
+import Anthropic from '@anthropic-ai/sdk';
 
-const client = new AnthropicBedrock({
-  awsRegion: process.env.AWS_REGION || 'us-west-2',
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY || '',
 });
 
 const FAQ_KNOWLEDGE = `STORE KNOWLEDGE BASE:
@@ -122,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }));
 
       const response = await client.messages.create({
-        model: 'us.anthropic.claude-sonnet-4-20250514-v1:0',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 300,
         system: SYSTEM_PROMPT,
         messages: claudeMessages,
